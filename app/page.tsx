@@ -17,12 +17,25 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
-  // 🔹 SIMULACIÓN DE USUARIO
+  // 🔹 SIMULACIÓN DE USUARIO (luego auth real)
   const isProUser = true
 
+  // 🔹 FETCH DE PARTIDOS
   useEffect(() => {
     fetchUpcomingNBAMatches()
-      .then(setMatches)
+      .then(data => {
+        // 👉 OPCIONAL: solo partidos del día más próximo
+        const today = new Date().toDateString()
+
+        const todayMatches = data.filter(
+          m =>
+            new Date(m.start_time).toDateString() === today
+        )
+
+        setMatches(
+          todayMatches.length > 0 ? todayMatches : data
+        )
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [])
@@ -40,14 +53,18 @@ export default function Home() {
     prop => prop.bet_decision === "PASS"
   )
 
+  // 🔹 LOADING
   if (loading) {
     return (
       <main className="p-6 max-w-3xl mx-auto">
-        <p className="text-slate-500">Cargando partidos NBA…</p>
+        <p className="text-slate-500">
+          Cargando partidos NBA…
+        </p>
       </main>
     )
   }
 
+  // 🔹 ERROR
   if (error) {
     return (
       <main className="p-6 max-w-3xl mx-auto">
@@ -70,25 +87,26 @@ export default function Home() {
         </p>
       </header>
 
-      {/* CONTEXTO */}
+      {/* CONTEXTO DEL MERCADO */}
       <div className="border rounded-xl p-4 bg-slate-50 space-y-1">
         <p className="text-sm text-slate-500">NBA · Hoy</p>
         <p>
-          <strong>Script del juego:</strong> Ritmo alto /
-          anotación elevada
+          <strong>Script del juego:</strong>{" "}
+          Ritmo alto / anotación elevada
         </p>
         <p>
-          <strong>Postura del modelo:</strong> Enfoque ofensivo
+          <strong>Postura del modelo:</strong>{" "}
+          Enfoque ofensivo
         </p>
       </div>
 
       {/* PARTIDOS */}
       <MatchSelector matches={matches} />
 
-      {/* GUÍA */}
+      {/* GUÍA DE USO */}
       <UsageGuidelines />
 
-      {/* VALUE BETS */}
+      {/* DECISIONES PRINCIPALES */}
       <DecisionSection
         title="Decisiones principales"
         description="Oportunidades con valor esperado positivo"
@@ -102,7 +120,7 @@ export default function Home() {
         ))}
       </DecisionSection>
 
-      {/* INFORMATIVO */}
+      {/* SOLO INFORMATIVO */}
       <DecisionSection
         title="Análisis informativo"
         description="Líneas sin acción recomendada"

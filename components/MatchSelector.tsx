@@ -8,6 +8,16 @@ type Props = {
 }
 
 export default function MatchSelector({ matches }: Props) {
+  if (!matches || matches.length === 0) {
+    return (
+      <div className="border rounded-xl p-4 bg-white">
+        <p className="text-sm text-slate-500">
+          No hay partidos próximos disponibles.
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="border rounded-xl p-4 bg-white space-y-3">
       <h3 className="font-semibold text-slate-900">
@@ -26,7 +36,7 @@ export default function MatchSelector({ matches }: Props) {
                   {match.home_team} vs {match.away_team}
                 </span>
                 <span className="text-sm text-slate-500">
-                  {new Date(match.start_time).toLocaleString()}
+                  {new Date(match.start_time).toLocaleString("es-MX")}
                 </span>
               </div>
             </Link>

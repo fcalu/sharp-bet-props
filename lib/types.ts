@@ -28,12 +28,12 @@ export type PredictionResponse = {
   analysis: string
 }
 
+/**
+ * 👇 ESTE ES EL TIPO QUE USA MatchSelector
+ */
 export type Match = {
-  sport: string
-  league: string
   event_id: string
   home_team: string
   away_team: string
   start_time: string
 }
-
