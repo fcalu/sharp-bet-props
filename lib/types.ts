@@ -6,6 +6,15 @@ export type Odds = {
   away_moneyline: number
 }
 
+export type Match = {
+  sport: string
+  league: string
+  event_id: string
+  home: string
+  away: string
+  start_time: string
+}
+
 export type PlayerProp = {
   name: string
   team?: string
@@ -28,12 +37,4 @@ export type PredictionResponse = {
   analysis: string
 }
 
-/**
- * 👇 ESTE ES EL TIPO QUE USA MatchSelector
- */
-export type Match = {
-  event_id: string
-  home_team: string
-  away_team: string
-  start_time: string
-}
+
