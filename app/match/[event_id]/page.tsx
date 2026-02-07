@@ -7,6 +7,7 @@ import PlayerCard from "@/components/PlayerCard"
 import UsageGuidelines from "@/components/UsageGuidelines"
 
 import { Match, PredictionResponse } from "@/lib/types"
+import FinalConclusion from "@/components/FinalConclusion"
 
 type PredictionState =
   | "idle"
@@ -139,7 +140,9 @@ export default function MatchPage() {
       </div>
 
       <UsageGuidelines />
-
+      {prediction && (
+        <FinalConclusion props={prediction.player_props} />
+        )}
       {/* PLAYER PROPS */}
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">
