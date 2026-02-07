@@ -23,7 +23,7 @@ export default function MatchSelector({ matches }: Props) {
             >
               <div className="flex justify-between items-center">
                 <span className="font-medium">
-                  {match.home} vs {match.away}
+                  {match.home_team} vs {match.away_team}
                 </span>
                 <span className="text-sm text-slate-500">
                   {new Date(match.start_time).toLocaleString()}
