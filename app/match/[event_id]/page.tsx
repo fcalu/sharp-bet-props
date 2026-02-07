@@ -153,20 +153,21 @@ export default function MatchPage({ params }: PageProps) {
           >
             {prediction.player_props.map((prop, index) => (
               <PlayerCard
-                key={index}
-                prop={{
-                  name: prop.name,
-                  type: prop.type,
-                  line: prop.line,
-                  confidence: prop.confidence,
-                  projection:
-                    prop.projection_model?.mean ?? null,
-                  edge_over: prop.edge_over,
-                  bet_tier: prop.bet_tier,
-                  bet_decision: prop.bet_decision,
-                }}
-                isProUser={true}
-              />
+  key={index}
+  prop={{
+    name: prop.name,
+    team: prop.team,
+    type: prop.type,
+    line: prop.line,
+    confidence: prop.confidence,
+    model_mean: prop.projection_model?.mean ?? null,
+    edge_over: prop.edge_over,
+    bet_tier: prop.bet_tier,
+    bet_decision: prop.bet_decision,
+    explanation_factors: prop.explanation_factors ?? [],
+  }}
+  isProUser={true}
+/>
             ))}
           </DecisionSection>
 
