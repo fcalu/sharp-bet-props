@@ -1,19 +1,12 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
-import PlayerCard from "@/components/PlayerCard"
-import DecisionSection from "@/components/DecisionSection"
+import { useEffect, useState } from "react"
+
 import UsageGuidelines from "@/components/UsageGuidelines"
+import DecisionSection from "@/components/DecisionSection"
+import PlayerCard from "@/components/PlayerCard"
 
-/* =======================
-   Tipos
-======================= */
-
-type PageProps = {
-  params: Promise<{
-    event_id: string
-  }>
-}
+import { Match, PredictionResponse } from "@/lib/types"
 
 type PredictionState =
   | "idle"
@@ -22,101 +15,126 @@ type PredictionState =
   | "no-edge"
   | "error"
 
-type PredictionResponse = {
-  match: string
-  league: string
-  odds: {
-    provider: string
+type Props = {
+  params: {
+    event_id: string
   }
-  game_script: string
-  player_props: any[]
-  analysis: string
 }
 
-/* =======================
-   Página
-======================= */
+export default function MatchPage({ params }: Props) {
+  const { event_id } = params
 
-export default function MatchPage({ params }: PageProps) {
-  // ✅ AQUÍ ESTÁ LA CLAVE
-  const { event_id } = use(params)
+  const [match, setMatch] = useState<Match | null>(null)
+  const [prediction, setPrediction] =
+    useState<PredictionResponse | null>(null)
 
   const [predictionState, setPredictionState] =
     useState<PredictionState>("idle")
 
-  const [prediction, setPrediction] =
-    useState<PredictionResponse | null>(null)
-
-  /* =======================
-     Fetch REAL del backend
-  ======================= */
+  /* =====================================================
+     1️⃣ CARGAR PARTIDO REAL DESDE API
+  ===================================================== */
   useEffect(() => {
-    if (!event_id) return
-
-    const fetchPrediction = async () => {
-      try {
-        setPredictionState("loading")
-
-        const res = await fetch(
-          "https://sportia-api.onrender.com/api/v1/ai/predict",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              sport: "basketball",
-              league: "basketball/nba",
-              event_id,
-              home_team: "Orlando Magic",
-              away_team: "Utah Jazz",
-            }),
-          }
+    fetch(
+      "https://sportia-api.onrender.com/api/v1/matches/upcoming?sport=nba"
+    )
+      .then(res => res.json())
+      .then((matches: Match[]) => {
+        const found = matches.find(
+          m => m.event_id === event_id
         )
-
-        if (!res.ok) throw new Error("Backend error")
-
-        const data: PredictionResponse = await res.json()
-
-        setPrediction(data)
-
-        if (!data.player_props || data.player_props.length === 0) {
-          setPredictionState("no-edge")
-        } else {
-          setPredictionState("ready")
-        }
-      } catch (err) {
+        if (!found) throw new Error("Match not found")
+        setMatch(found)
+      })
+      .catch(err => {
         console.error(err)
         setPredictionState("error")
-      }
+      })
+  }, [event_id])
+
+  /* =====================================================
+     2️⃣ FETCH DE PREDICCIÓN (SIN HARDCODEOS)
+  ===================================================== */
+  const fetchPrediction = async () => {
+    if (!match) return
+
+    try {
+      setPredictionState("loading")
+
+      const res = await fetch(
+        "https://sportia-api.onrender.com/api/v1/ai/predict",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            sport: "nba",
+            league: "basketball/nba",
+            event_id: match.event_id,
+            home_team: match.home,
+            away_team: match.away,
+          }),
+        }
+      )
+
+      if (!res.ok) throw new Error("Prediction error")
+
+      const data: PredictionResponse = await res.json()
+      setPrediction(data)
+
+      setPredictionState(
+        !data.player_props || data.player_props.length === 0
+          ? "no-edge"
+          : "ready"
+      )
+    } catch (err) {
+      console.error(err)
+      setPredictionState("error")
     }
+  }
 
-    fetchPrediction()
-  }, [event_id]) // ✅ dependencia correcta
+  /* =====================================================
+     3️⃣ DISPARAR PREDICCIÓN CUANDO YA TENEMOS MATCH
+  ===================================================== */
+  useEffect(() => {
+    if (match) fetchPrediction()
+  }, [match])
 
-  /* =======================
-     Render
-  ======================= */
+  /* =====================================================
+     4️⃣ ESTADOS DE UI
+  ===================================================== */
+  if (!match) {
+    return (
+      <main className="p-6 max-w-3xl mx-auto">
+        <p className="text-slate-500">
+          Cargando partido…
+        </p>
+      </main>
+    )
+  }
 
   return (
     <main className="p-6 space-y-8 max-w-3xl mx-auto">
+      {/* HEADER */}
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold text-slate-900">
-          {prediction?.match ?? "Análisis del partido"}
+        <h1 className="text-3xl font-bold">
+          {match.home} vs {match.away}
         </h1>
         <p className="text-sm text-slate-500">
-          Event ID: {event_id}
+          Event ID: {match.event_id}
         </p>
       </header>
 
+      {/* CONTEXTO */}
       {prediction && (
         <div className="border rounded-xl p-4 bg-slate-50 space-y-1">
           <p>
             <strong>Script del juego:</strong>{" "}
-            {prediction.game_script === "low_scoring"
-              ? "Puntuación baja"
-              : "Puntuación alta"}
+            {prediction.game_script === "high_scoring"
+              ? "Puntuación alta"
+              : "Puntuación baja"}
           </p>
           <p>
             <strong>Casa de apuestas:</strong>{" "}
@@ -125,55 +143,47 @@ export default function MatchPage({ params }: PageProps) {
         </div>
       )}
 
+      {/* GUÍA */}
+      <UsageGuidelines />
+
+      {/* ESTADOS */}
       {predictionState === "loading" && (
-        <div className="p-4 text-center text-slate-500">
-          Cargando análisis del modelo…
-        </div>
+        <p className="text-slate-500 text-center">
+          Ejecutando modelo…
+        </p>
       )}
 
       {predictionState === "error" && (
-        <div className="p-4 text-center text-red-600">
-          Error al cargar la predicción.
-        </div>
+        <p className="text-red-600 text-center">
+          Error al generar la predicción.
+        </p>
       )}
 
       {predictionState === "no-edge" && (
-        <div className="p-4 text-center text-slate-600">
-          El modelo no detectó oportunidades con valor.
-        </div>
+        <p className="text-slate-600 text-center">
+          El modelo no detectó valor en este partido.
+        </p>
       )}
 
+      {/* RESULTADOS */}
       {predictionState === "ready" && prediction && (
         <>
-          <UsageGuidelines />
-
           <DecisionSection
             title="Análisis de jugadores"
             description="Evaluación estadística generada por el modelo"
           >
-            {prediction.player_props.map((prop, index) => (
+            {prediction.player_props.map((prop, idx) => (
               <PlayerCard
-  key={index}
-  prop={{
-    name: prop.name,
-    team: prop.team,
-    type: prop.type,
-    line: prop.line,
-    confidence: prop.confidence,
-    model_mean: prop.projection_model?.mean ?? null,
-    edge_over: prop.edge_over,
-    bet_tier: prop.bet_tier,
-    bet_decision: prop.bet_decision,
-    explanation_factors: prop.explanation_factors ?? [],
-  }}
-  isProUser={true}
-/>
+                key={idx}
+                prop={prop}
+                isProUser={true}
+              />
             ))}
           </DecisionSection>
 
-          <div className="border rounded-xl p-4 bg-white space-y-2">
-            <h3 className="font-semibold text-slate-900">
-              Análisis del modelo
+          <div className="border rounded-xl p-4 bg-white">
+            <h3 className="font-semibold mb-2">
+              Conclusión del modelo
             </h3>
             <p className="text-sm text-slate-700 whitespace-pre-line">
               {prediction.analysis}
