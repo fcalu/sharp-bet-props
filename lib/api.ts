@@ -1,4 +1,5 @@
-import { Match } from "@/lib/types"
+export type { Match } from "@/lib/types"
+
 
 export async function fetchUpcomingNBAMatches() {
   const res = await fetch(

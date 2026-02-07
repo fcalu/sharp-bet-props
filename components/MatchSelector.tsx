@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Match } from "@/lib/api"
+import { Match } from "@/lib/types"
 
 type Props = {
   matches: Match[]
