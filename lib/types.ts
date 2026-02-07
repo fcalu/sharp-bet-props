@@ -8,7 +8,7 @@ export type Odds = {
 
 export type PlayerProp = {
   name: string
-  team: string
+  team?: string
   type: "Points" | "Rebounds"
   line: number
   confidence: number
@@ -16,7 +16,7 @@ export type PlayerProp = {
   bet_tier: "VALUE BET" | "NO BET" | "SOLO INFORMATIVO"
   bet_decision: "OVER" | "UNDER" | "PASS"
   model_mean: number
-  explanation_factors: string[]
+  explanation_factors?: string[]
 }
 
 export type PredictionResponse = {

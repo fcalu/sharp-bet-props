@@ -16,8 +16,10 @@ export default function PlayerCard({ prop, isProUser }: Props) {
       {/* Nombre */}
       <h2 className="text-lg font-semibold">{prop.name}</h2>
 
-      {/* Equipo */}
-      <p className="text-xs text-slate-500">{prop.team}</p>
+      {/* Equipo (opcional) */}
+      {prop.team && (
+        <p className="text-xs text-slate-500">{prop.team}</p>
+      )}
 
       {/* Badge */}
       <span
@@ -43,7 +45,9 @@ export default function PlayerCard({ prop, isProUser }: Props) {
       )}
 
       {/* Confianza */}
-      <p className="text-sm">Confianza del modelo: {prop.confidence}%</p>
+      <p className="text-sm">
+        Confianza del modelo: {prop.confidence}%
+      </p>
 
       <div className="h-2 bg-gray-200 rounded">
         <div
@@ -65,20 +69,31 @@ export default function PlayerCard({ prop, isProUser }: Props) {
       {/* Explicación */}
       {isProUser ? (
         <>
-          <button
-            onClick={() => setShowExplanation(!showExplanation)}
-            className="text-sm text-blue-600 underline"
-          >
-            {showExplanation ? "Ocultar explicación" : "Ver explicación"}
-          </button>
+          {prop.explanation_factors &&
+            prop.explanation_factors.length > 0 && (
+              <>
+                <button
+                  onClick={() =>
+                    setShowExplanation(!showExplanation)
+                  }
+                  className="text-sm text-blue-600 underline"
+                >
+                  {showExplanation
+                    ? "Ocultar explicación"
+                    : "Ver explicación"}
+                </button>
 
-          {showExplanation && (
-            <ul className="list-disc list-inside text-sm text-slate-700">
-              {prop.explanation_factors.map((f, i) => (
-                <li key={i}>{f}</li>
-              ))}
-            </ul>
-          )}
+                {showExplanation && (
+                  <ul className="list-disc list-inside text-sm text-slate-700">
+                    {prop.explanation_factors.map(
+                      (factor, index) => (
+                        <li key={index}>{factor}</li>
+                      )
+                    )}
+                  </ul>
+                )}
+              </>
+            )}
         </>
       ) : (
         <p className="text-xs text-slate-400">
