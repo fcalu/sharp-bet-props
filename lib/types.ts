@@ -27,3 +27,13 @@ export type PredictionResponse = {
   player_props: PlayerProp[]
   analysis: string
 }
+
+export type Match = {
+  sport: string
+  league: string
+  event_id: string
+  home_team: string
+  away_team: string
+  start_time: string
+}
+
