@@ -9,14 +9,20 @@ import MarketConclusion from "@/components/MarketConclusion"
 
 import { PredictionResponse } from "@/lib/types"
 
-type State = "loading" | "ready" | "error"
+type PredictionState =
+  | "loading"
+  | "ready"
+  | "no-prediction"
+  | "error"
 
-export default function MatchPredictionPage() {
+export default function MatchPage() {
   const { event_id } = useParams<{ event_id: string }>()
 
   const [prediction, setPrediction] =
     useState<PredictionResponse | null>(null)
-  const [state, setState] = useState<State>("loading")
+
+  const [state, setState] =
+    useState<PredictionState>("loading")
 
   useEffect(() => {
     const fetchPrediction = async () => {
@@ -29,7 +35,6 @@ export default function MatchPredictionPage() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Accept: "application/json",
             },
             body: JSON.stringify({
               sport: "nba",
@@ -39,9 +44,21 @@ export default function MatchPredictionPage() {
           }
         )
 
-        if (!res.ok) throw new Error("Prediction error")
+        if (!res.ok) {
+          setState("no-prediction")
+          return
+        }
 
         const data: PredictionResponse = await res.json()
+
+        if (
+          !data.player_props ||
+          data.player_props.length === 0
+        ) {
+          setPrediction(data)
+          setState("no-prediction")
+          return
+        }
 
         setPrediction(data)
         setState("ready")
@@ -54,95 +71,76 @@ export default function MatchPredictionPage() {
     fetchPrediction()
   }, [event_id])
 
-  // 🔹 LOADING
+  /* ===========================
+     ESTADOS
+     =========================== */
+
   if (state === "loading") {
     return (
       <main className="p-6 max-w-4xl mx-auto">
-        <p className="text-slate-500">Cargando partido…</p>
-      </main>
-    )
-  }
-
-  // 🔹 ERROR
-  if (state === "error" || !prediction) {
-    return (
-      <main className="p-6 max-w-4xl mx-auto">
-        <p className="text-red-600">
-          Error al cargar la predicción. Intenta más tarde.
+        <p className="text-slate-500">
+          Cargando análisis del partido…
         </p>
       </main>
     )
   }
 
-  const props = prediction.player_props ?? []
-
-  const valueProps = props.filter(
-    p => p.bet_tier === "VALUE BET"
-  )
-
-  const infoProps =
-    valueProps.length > 0
-      ? props.filter(p => p.bet_tier !== "VALUE BET")
-      : props
+  if (state === "error") {
+    return (
+      <main className="p-6 max-w-4xl mx-auto">
+        <p className="text-red-600">
+          Error técnico al cargar la predicción.
+        </p>
+      </main>
+    )
+  }
 
   return (
     <main className="p-6 space-y-8 max-w-4xl mx-auto">
       {/* HEADER */}
       <header className="space-y-1">
         <h1 className="text-3xl font-bold text-slate-900">
-          {prediction.match}
+          {prediction?.match ?? "Partido NBA"}
         </h1>
         <p className="text-sm text-slate-500">
           Event ID: {event_id}
         </p>
       </header>
 
-      {/* CONCLUSIÓN DEL MODELO */}
-      <MarketConclusion prediction={prediction} />
+      {/* CONCLUSIÓN SI EXISTE */}
+      {prediction && (
+        <MarketConclusion prediction={prediction} />
+      )}
 
-      {/* GUÍA */}
-      <UsageGuidelines />
+      {/* SIN PREDICCIÓN */}
+      {state === "no-prediction" && (
+        <div className="border rounded-xl p-4 bg-slate-50 text-slate-600">
+          El modelo aún no ha generado una predicción para
+          este partido. Esto puede deberse a falta de datos
+          de mercado u horarios aún no consolidados.
+        </div>
+      )}
 
-      {/* PLAYER PROPS */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Análisis de jugadores
-        </h2>
+      {/* PROPS */}
+      {prediction?.player_props &&
+        prediction.player_props.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold">
+              Análisis de jugadores
+            </h2>
 
-        {/* VALUE BETS */}
-        {valueProps.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-medium text-green-700">
-              Props con ventaja del modelo
-            </h3>
-
-            {valueProps.map((prop, i) => (
+            {prediction.player_props.map((prop, i) => (
               <PlayerCard
                 key={i}
                 prop={prop}
                 isProUser={true}
               />
             ))}
-          </div>
+          </section>
         )}
 
-        {/* INFORMATIVO (fallback) */}
-        {valueProps.length === 0 && (
-          <div className="border rounded-xl p-4 bg-slate-50 text-slate-600">
-            El modelo no detectó ventajas estadísticas claras
-            en este partido. A continuación se muestran las
-            proyecciones base del modelo (uso informativo).
-          </div>
-        )}
-
-        {infoProps.map((prop, i) => (
-          <PlayerCard
-            key={`info-${i}`}
-            prop={prop}
-            isProUser={true}
-          />
-        ))}
-      </section>
+      {/* GUÍA */}
+      <UsageGuidelines />
     </main>
   )
 }
