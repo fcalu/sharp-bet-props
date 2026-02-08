@@ -7,7 +7,7 @@ import UsageGuidelines from "@/components/UsageGuidelines"
 import PlayerPropsTable from "@/components/PlayerPropsTable"
 import MarketConclusion from "@/components/MarketConclusion"
 
-import { PredictionResponse } from "@/lib/types"
+import { PredictionResponse, Match } from "@/lib/types"
 
 type PredictionState =
   | "idle"
@@ -23,17 +23,38 @@ export default function MatchPage() {
   const [prediction, setPrediction] =
     useState<PredictionResponse | null>(null)
 
+  const [match, setMatch] = useState<Match | null>(null)
   const [state, setState] =
     useState<PredictionState>("idle")
 
   useEffect(() => {
     if (!event_id) return
 
-    const fetchPrediction = async () => {
+    const fetchData = async () => {
       try {
         setState("loading")
 
-        const res = await fetch(
+        // 1️⃣ Traer partidos
+        const matchesRes = await fetch(
+          "https://sportia-api.onrender.com/api/v1/matches/upcoming?sport=nba"
+        )
+
+        if (!matchesRes.ok)
+          throw new Error("Error fetching matches")
+
+        const matches: Match[] = await matchesRes.json()
+
+        const currentMatch = matches.find(
+          m => m.event_id === event_id
+        )
+
+        if (!currentMatch)
+          throw new Error("Match not found")
+
+        setMatch(currentMatch)
+
+        // 2️⃣ Pedir predicción REAL
+        const predictRes = await fetch(
           "https://sportia-api.onrender.com/api/v1/ai/predict",
           {
             method: "POST",
@@ -42,17 +63,20 @@ export default function MatchPage() {
               Accept: "application/json",
             },
             body: JSON.stringify({
-              sport: "basketball",
+              sport: "nba",
               league: "basketball/nba",
               event_id,
+              home_team: currentMatch.home,
+              away_team: currentMatch.away,
             }),
           }
         )
 
-        if (!res.ok) throw new Error("Backend error")
+        if (!predictRes.ok)
+          throw new Error("Prediction error")
 
         const data: PredictionResponse =
-          await res.json()
+          await predictRes.json()
 
         setPrediction(data)
 
@@ -70,11 +94,11 @@ export default function MatchPage() {
       }
     }
 
-    fetchPrediction()
+    fetchData()
   }, [event_id])
 
   // 🔹 LOADING
-  if (state === "loading" || state === "idle") {
+  if (state === "idle" || state === "loading") {
     return (
       <main className="p-6 max-w-4xl mx-auto">
         <p className="text-slate-500">
@@ -96,27 +120,27 @@ export default function MatchPage() {
     )
   }
 
-  if (!prediction) return null
+  if (!prediction || !match) return null
 
   return (
     <main className="p-6 space-y-8 max-w-4xl mx-auto">
       {/* HEADER */}
       <header className="space-y-1">
         <h1 className="text-3xl font-bold text-slate-900">
-          {prediction.match}
+          {match.home} vs {match.away}
         </h1>
         <p className="text-sm text-slate-500">
           Event ID: {event_id}
         </p>
       </header>
 
-      {/* CONCLUSIÓN DEL MODELO */}
+      {/* CONCLUSIÓN DEL MERCADO */}
       <MarketConclusion prediction={prediction} />
 
       {/* GUÍA */}
       <UsageGuidelines />
 
-      {/* PLAYER PROPS (TABLA PRO) */}
+      {/* PLAYER PROPS */}
       {state === "ready" && (
         <section className="space-y-2">
           <h2 className="text-xl font-semibold">
