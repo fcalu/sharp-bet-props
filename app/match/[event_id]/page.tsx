@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 
-import PlayerCard from "@/components/PlayerCard"
 import UsageGuidelines from "@/components/UsageGuidelines"
+import PlayerPropsTable from "@/components/PlayerPropsTable"
 import MarketConclusion from "@/components/MarketConclusion"
 
-import { Match, PredictionResponse } from "@/lib/types"
-import FinalConclusion from "@/components/FinalConclusion"
+import { PredictionResponse } from "@/lib/types"
 
 type PredictionState =
   | "idle"
@@ -18,45 +17,23 @@ type PredictionState =
   | "error"
 
 export default function MatchPage() {
-  const { event_id } = useParams<{ event_id: string }>()
+  const params = useParams()
+  const event_id = params.event_id as string
 
-  const [match, setMatch] = useState<Match | null>(null)
   const [prediction, setPrediction] =
     useState<PredictionResponse | null>(null)
-  const [state, setState] =
-    useState<PredictionState>("loading")
 
-  const isProUser = true // luego auth real
+  const [state, setState] =
+    useState<PredictionState>("idle")
 
   useEffect(() => {
     if (!event_id) return
 
-    const loadPrediction = async () => {
+    const fetchPrediction = async () => {
       try {
         setState("loading")
 
-        // 1️⃣ Traer partidos próximos
-        const matchesRes = await fetch(
-          "https://sportia-api.onrender.com/api/v1/matches/upcoming?sport=nba"
-        )
-
-        if (!matchesRes.ok)
-          throw new Error("Error cargando partidos")
-
-        const matches: Match[] = await matchesRes.json()
-
-        // 2️⃣ Buscar el partido correcto
-        const foundMatch = matches.find(
-          m => m.event_id === event_id
-        )
-
-        if (!foundMatch)
-          throw new Error("Partido no encontrado")
-
-        setMatch(foundMatch)
-
-        // 3️⃣ Pedir predicción REAL
-        const predictionRes = await fetch(
+        const res = await fetch(
           "https://sportia-api.onrender.com/api/v1/ai/predict",
           {
             method: "POST",
@@ -67,22 +44,22 @@ export default function MatchPage() {
             body: JSON.stringify({
               sport: "basketball",
               league: "basketball/nba",
-              event_id: foundMatch.event_id,
-              home_team: foundMatch.home,
-              away_team: foundMatch.away,
+              event_id,
             }),
           }
         )
 
-        if (!predictionRes.ok)
-          throw new Error("Error en predicción")
+        if (!res.ok) throw new Error("Backend error")
 
         const data: PredictionResponse =
-          await predictionRes.json()
+          await res.json()
 
         setPrediction(data)
 
-        if (!data.player_props || data.player_props.length === 0) {
+        if (
+          !data.player_props ||
+          data.player_props.length === 0
+        ) {
           setState("no-edge")
         } else {
           setState("ready")
@@ -93,80 +70,72 @@ export default function MatchPage() {
       }
     }
 
-    loadPrediction()
+    fetchPrediction()
   }, [event_id])
 
-  if (state === "loading") {
+  // 🔹 LOADING
+  if (state === "loading" || state === "idle") {
     return (
-      <main className="p-6 max-w-3xl mx-auto text-center">
-        <p className="text-slate-500">Cargando partido…</p>
-      </main>
-    )
-  }
-
-  if (state === "error" || !match) {
-    return (
-      <main className="p-6 max-w-3xl mx-auto text-center">
-        <p className="text-red-600">
-          Error al cargar la predicción.
+      <main className="p-6 max-w-4xl mx-auto">
+        <p className="text-slate-500">
+          Cargando partido…
         </p>
       </main>
     )
   }
 
+  // 🔹 ERROR
+  if (state === "error") {
+    return (
+      <main className="p-6 max-w-4xl mx-auto">
+        <p className="text-red-600">
+          Error al cargar la predicción. Intenta
+          más tarde.
+        </p>
+      </main>
+    )
+  }
+
+  if (!prediction) return null
+
   return (
-    <main className="p-6 space-y-8 max-w-3xl mx-auto">
+    <main className="p-6 space-y-8 max-w-4xl mx-auto">
       {/* HEADER */}
-      <header>
-        <h1 className="text-3xl font-bold">
-          {match.home} vs {match.away}
+      <header className="space-y-1">
+        <h1 className="text-3xl font-bold text-slate-900">
+          {prediction.match}
         </h1>
         <p className="text-sm text-slate-500">
-          Event ID: {match.event_id}
+          Event ID: {event_id}
         </p>
       </header>
 
-      {/* CONTEXTO */}
-      <div className="border rounded-xl p-4 bg-slate-50">
-        <p>
-          <strong>Script del juego:</strong>{" "}
-          {prediction?.game_script === "high_scoring"
-            ? "Puntuación alta"
-            : "Puntuación baja"}
-        </p>
-        <p>
-          <strong>Casa de apuestas:</strong>{" "}
-          {prediction?.odds.provider}
-        </p>
-      </div>
-       {prediction && (
-  <MarketConclusion prediction={prediction} />
-)}
+      {/* CONCLUSIÓN DEL MODELO */}
+      <MarketConclusion prediction={prediction} />
 
+      {/* GUÍA */}
       <UsageGuidelines />
-      {prediction && (
-        <FinalConclusion props={prediction.player_props} />
-        )}
-      {/* PLAYER PROPS */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Análisis de jugadores
-        </h2>
 
-        {state === "no-edge" && (
-          <p className="text-slate-500">
-            No se detectaron apuestas con valor en este partido.
-          </p>
-        )}
+      {/* PLAYER PROPS (TABLA PRO) */}
+      {state === "ready" && (
+        <section className="space-y-2">
+          <h2 className="text-xl font-semibold">
+            Player Props
+          </h2>
 
-        {prediction?.player_props.map((prop, idx) => (
-          <PlayerCard
-            key={idx}
-            prop={prop}
-            isProUser={isProUser}
+          <PlayerPropsTable
+            props={prediction.player_props}
           />
-        ))}
-      </section>
+        </section>
+      )}
+
+      {/* SIN EDGE */}
+      {state === "no-edge" && (
+        <div className="border rounded-xl p-4 bg-slate-50 text-slate-600">
+          El modelo no detectó ventajas claras
+          en este partido.
+        </div>
+      )}
     </main>
   )
 }
