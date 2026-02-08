@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 
 import PlayerCard from "@/components/PlayerCard"
 import UsageGuidelines from "@/components/UsageGuidelines"
+import MarketConclusion from "@/components/MarketConclusion"
 
 import { Match, PredictionResponse } from "@/lib/types"
 import FinalConclusion from "@/components/FinalConclusion"
@@ -138,6 +139,9 @@ export default function MatchPage() {
           {prediction?.odds.provider}
         </p>
       </div>
+       {prediction && (
+  <MarketConclusion prediction={prediction} />
+)}
 
       <UsageGuidelines />
       {prediction && (
